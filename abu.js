@@ -1,3 +1,17 @@
+/*
+╔══════════════════════════════════════════════╗
+║ ⚠️  PERINGATAN PENTING                       ║
+║ ❌ Script ini TIDAK BOLEH DIPERJUALBELIKAN!  ║
+╠══════════════════════════════════════════════╣
+║ 🛠️ Version   : 1.0.0                         ║
+║ 👨‍💻 Developer : AbuZy Creative                ║
+║ 🌐 Website   : t.me/abuzycreative            ║
+║ 💻 GitHub    : github.com/PrabuSA192/        ║
+╠══════════════════════════════════════════════╣
+║ 📌 Open Source mulai 30 Januari 2026         ║
+║ 🔗 Bisa digunakan GRATIS & untuk edukasi     ║
+╚══════════════════════════════════════════════╝
+*/
 const TelegramBot = require("node-telegram-bot-api");
 const os = require("os");
 const fs = require("fs");
@@ -898,5 +912,6 @@ Anda akan mendapat notifikasi setelah pembayaran dikonfirmasi.
   }
 
 });
+
 
 console.log("Bot Running...");
