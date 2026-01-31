@@ -3,7 +3,7 @@
 ║ ⚠️  PERINGATAN PENTING                       ║
 ║ ❌ Script ini TIDAK BOLEH DIPERJUALBELIKAN!  ║
 ╠══════════════════════════════════════════════╣
-║ 🛠️ Version   : 1.0.0                         ║
+║ 🛠️ Version   : 1.1.0                         ║
 ║ 👨‍💻 Developer : AbuZy Creative                ║
 ║ 🌐 Website   : t.me/abuzycreative            ║
 ║ 💻 GitHub    : github.com/PrabuSA192/        ║
@@ -24,7 +24,7 @@ const TOKEN = settings.TOKEN;
 const ADMIN_LINK = settings.ADMIN_LINK;
 const CHANNEL_LINK = settings.CHANNEL_LINK;
 const runtimeIntervals = {};
-const OWNER_ID = settings.OWNER_ID; // GANTI ID TELEGRAM KAMU
+const OWNER_ID = settings.OWNER_ID;
 
 // ================= CONFIG =================
 const bot = new TelegramBot(TOKEN, { polling: true });
@@ -40,13 +40,21 @@ if (!fs.existsSync(`${DB_PATH}/users.json`))
 if (!fs.existsSync(`${DB_PATH}/transaksi.json`))
   fs.writeFileSync(`${DB_PATH}/transaksi.json`, "[]");
 
-// Database untuk akun produk
+// Database untuk akun produk dan link download
 const DATA_PATH = "./data";
 if (!fs.existsSync(DATA_PATH)) fs.mkdirSync(DATA_PATH);
 
+// Database untuk produk 1 (Alight Motion)
 if (!fs.existsSync(`${DATA_PATH}/dataam.json`))
   fs.writeFileSync(`${DATA_PATH}/dataam.json`, "[]");
 
+// Database untuk produk 2 (Panel Unli) - BARU!
+if (!fs.existsSync(`${DATA_PATH}/datapanel.json`))
+  fs.writeFileSync(`${DATA_PATH}/datapanel.json`, "[]");
+
+// Database untuk produk 3 (APK)
+if (!fs.existsSync(`${DATA_PATH}/dataapk.json`))
+  fs.writeFileSync(`${DATA_PATH}/dataapk.json`, "[]");
 
 // ================= SESSION =================
 let session = {};
@@ -58,7 +66,8 @@ const produkList = {
     id: 1,
     nama: "Alight Motion Private",
     harga: 3500,
-    stok: 10,
+    type: "akun",
+    database: "dataam",
     desk: `
 ━━━━━━━━━━━━━
 ᯤ Deskripsi :
@@ -69,11 +78,12 @@ const produkList = {
 > Bisa Menggunakan Fitur Premium ✅
 `
   },
-   panelunli: {
+  panelunli: {
     id: 2,
     nama: "Panel Unli Private",
     harga: 1000,
-    stok: 1,
+    type: "panel", // Tipe khusus untuk panel
+    database: "datapanel",
     desk: `
 ━━━━━━━━━━━━━
 ᯤ Deskripsi :
@@ -83,11 +93,26 @@ const produkList = {
 > Legal ✅
 > Bisa Menggunakan Fitur Premium ✅
 `
+  },
+  aplikasipremium: {
+    id: 3,
+    nama: "Aplikasi HD Premium",
+    harga: 2000,
+    type: "apk",
+    database: "dataapk",
+    desk: `
+━━━━━━━━━━━━━
+ᯤ Deskripsi :
+> Aplikasi Premium MOD ✅
+> Semua Fitur Unlocked ✅
+> No Ads ✅
+> Update Lifetime ✅
+> Legal & Aman ✅
+`
   }
 };
 
-
-// ================= FUNCTION TAMPILAN DI TERMINAL =================\
+// ================= FUNCTION TAMPILAN DI TERMINAL =================
 const TERMINAL_WIDTH = process.stdout.columns || 80;
 
 function horizontalLine(width, char) {
@@ -97,7 +122,6 @@ function horizontalLine(width, char) {
 async function getServerSpecs() {
     const totalMemory = (os.totalmem() / 1024 / 1024).toFixed(0) + " MB";
     const usedMemory = ((os.totalmem() - os.freemem()) / 1024 / 1024).toFixed(0) + " MB";
-
     const uptime = getRuntime();
 
     let publicIp = "Unknown";
@@ -115,7 +139,6 @@ async function getServerSpecs() {
 }
 
 async function showBotInfo() {
-
     const specs = await getServerSpecs();
 
     console.log(`\n${chalk.cyan(horizontalLine(TERMINAL_WIDTH, "="))}`);
@@ -149,7 +172,6 @@ async function showBotInfo() {
 }
 
 (async () => {
-
     await showBotInfo();
 
     bot.on('polling_error', (err) => {
@@ -164,9 +186,7 @@ async function showBotInfo() {
         .catch(() => {
             console.log(chalk.red("[AbuZy Creative]: Waduh gagal konek bre lu ubah kode nya ya?"));
         });
-
 })();
-
 
 // ================= FUNCTION DATABASE =================
 
@@ -193,43 +213,86 @@ function addTransaksi(data) {
   fs.writeFileSync(`${DB_PATH}/transaksi.json`, JSON.stringify(trx, null, 2));
 }
 
-// ================= FUNCTION DATA AKUN =================
+// ================= FUNCTION DATA AKUN (UNIVERSAL) =================
 
-function getDataAkun() {
+function getDataAkun(dbName) {
   try {
-    return JSON.parse(fs.readFileSync(`${DATA_PATH}/dataam.json`));
+    return JSON.parse(fs.readFileSync(`${DATA_PATH}/${dbName}.json`));
   } catch (err) {
-    console.error("Error reading dataam.json:", err);
+    console.error(`Error reading ${dbName}.json:`, err);
     return [];
   }
 }
 
-function ambilAkunDanHapus(qty) {
-  let dataAkun = getDataAkun();
+function ambilAkunDanHapus(dbName, qty) {
+  let dataAkun = getDataAkun(dbName);
   
-  // Cek apakah stok cukup
   if (dataAkun.length < qty) {
     return { success: false, message: "Stok akun tidak mencukupi!" };
   }
   
-  // Ambil akun sejumlah qty
   const akunDiambil = dataAkun.slice(0, qty);
-  
-  // Sisa akun yang tidak diambil
   const sisaAkun = dataAkun.slice(qty);
   
-  // Update file dengan sisa akun
-  fs.writeFileSync(`${DATA_PATH}/dataam.json`, JSON.stringify(sisaAkun, null, 2));
+  fs.writeFileSync(`${DATA_PATH}/${dbName}.json`, JSON.stringify(sisaAkun, null, 2));
   
-  console.log(`✅ ${qty} akun berhasil diambil. Sisa stok: ${sisaAkun.length}`);
+  console.log(`✅ ${qty} akun berhasil diambil dari ${dbName}. Sisa stok: ${sisaAkun.length}`);
   
   return { success: true, data: akunDiambil };
 }
 
-function getStokAkun() {
-  return getDataAkun().length;
+function getStokAkun(dbName) {
+  return getDataAkun(dbName).length;
 }
 
+// ================= FUNCTION DATA APK (QTY BASED) =================
+
+function getDataApk() {
+  try {
+    return JSON.parse(fs.readFileSync(`${DATA_PATH}/dataapk.json`));
+  } catch (err) {
+    console.error("Error reading dataapk.json:", err);
+    return [];
+  }
+}
+
+function ambilApkDanKurangiQty(qtyBeli) {
+  let dataApk = getDataApk();
+  
+  if (dataApk.length === 0) {
+    return { success: false, message: "Produk APK tidak tersedia!" };
+  }
+  
+  let produkApk = dataApk[0];
+  
+  if (produkApk.qty < qtyBeli) {
+    return { success: false, message: `Stok tidak mencukupi! Tersedia: ${produkApk.qty}` };
+  }
+  
+  produkApk.qty -= qtyBeli;
+  
+  fs.writeFileSync(`${DATA_PATH}/dataapk.json`, JSON.stringify(dataApk, null, 2));
+  
+  console.log(`✅ ${qtyBeli} APK berhasil terjual. Sisa stok: ${produkApk.qty}`);
+  
+  const apkDibeli = [];
+  for (let i = 0; i < qtyBeli; i++) {
+    apkDibeli.push({
+      nama: produkApk.nama,
+      url: produkApk.url,
+      keterangan: produkApk.keterangan,
+      password: produkApk.password || null
+    });
+  }
+  
+  return { success: true, data: apkDibeli };
+}
+
+function getStokApk() {
+  const dataApk = getDataApk();
+  if (dataApk.length === 0) return 0;
+  return dataApk[0].qty || 0;
+}
 
 // ================= FUNCTION RUNTIME =================
 function getRuntime() {
@@ -276,7 +339,15 @@ ID user : \`${userId}\`
 function produkDetail(userId) {
   const s = session[userId];
   const produk = produkList[s.produk];
-  const stokReal = getStokAkun(); // Ambil stok dari database
+  
+  // Ambil stok berdasarkan tipe produk
+  let stokReal;
+  if (produk.type === "akun" || produk.type === "panel") {
+    stokReal = getStokAkun(produk.database);
+  } else if (produk.type === "apk") {
+    stokReal = getStokApk();
+  }
+  
   const total = produk.harga * s.qty;
 
   return {
@@ -304,7 +375,6 @@ ${produk.desk}
 
 // ================= START =================
 bot.onText(/\/start/, async (msg) => {
-
   const chatId = msg.chat.id;
   saveUser(msg.from.id);
 
@@ -320,14 +390,11 @@ bot.onText(/\/start/, async (msg) => {
     }
   );
 
-  // ❌ Hapus interval lama kalau ada
   if (runtimeIntervals[chatId]) {
     clearInterval(runtimeIntervals[chatId]);
   }
 
-  // ✅ Buat interval baru
   runtimeIntervals[chatId] = setInterval(() => {
-
     const updated = mainMenu(msg.from.id);
 
     bot.editMessageCaption(updated.caption, {
@@ -336,14 +403,11 @@ bot.onText(/\/start/, async (msg) => {
       parse_mode: "Markdown",
       reply_markup: updated.keyboard
     }).catch(() => {});
-
-  }, 1000);
-
+  }, 60000);
 });
 
 // ================= CALLBACK =================
 bot.on("callback_query", async (query) => {
-
   const chatId = query.message.chat.id;
   const messageId = query.message.message_id;
   const userId = query.from.id;
@@ -352,10 +416,8 @@ bot.on("callback_query", async (query) => {
 
   // ===== INFORMASI BOT =====
   if (query.data === "infobot") {
-    // Hapus pesan sebelumnya
     bot.deleteMessage(chatId, messageId).catch(() => {});
 
-    // Kirim pesan baru dengan foto
     bot.sendPhoto(
       chatId,
       "https://files.catbox.moe/s6oxnk.jpg",
@@ -388,10 +450,8 @@ otomatis setelah pembayaran berhasil.
 
   // ===== CARA ORDER =====
   if (query.data === "order") {
-    // Hapus pesan sebelumnya
     bot.deleteMessage(chatId, messageId).catch(() => {});
 
-    // Kirim pesan baru dengan foto
     bot.sendPhoto(
       chatId,
       "https://files.catbox.moe/s6oxnk.jpg",
@@ -424,76 +484,101 @@ Butuh bantuan? Hubungi admin kami!`,
     );
   }
 
- if (query.data === "katalog") {
+  // ===== KATALOG =====
+  if (query.data === "katalog") {
+    const p1 = produkList.alightmotion;
+    const p2 = produkList.panelunli;
+    const p3 = produkList.aplikasipremium;
 
-  const p1 = produkList.alightmotion;
-  const p2 = produkList.panelunli;
+    const stokP1 = getStokAkun(p1.database);
+    const stokP2 = getStokAkun(p2.database);
+    const stokP3 = getStokApk();
 
-  const stokReal = getStokAkun();
-
-  bot.editMessageCaption(
+    bot.editMessageCaption(
 `🛍 *Semua Catalog Produk*
 
 ━━━━━━━━━━━━━
-[ 1 ] ${p1.nama} ${stokReal > 0 ? "✅" : "🚫"}
-  ╰┈➤ ᴛᴇʀꜱᴇᴅɪᴀ : ${stokReal} pcs
+[ 1 ] ${p1.nama} ${stokP1 > 0 ? "✅" : "🚫"}
+  ╰┈➤ ᴛᴇʀꜱᴇᴅɪᴀ : ${stokP1} pcs
 ━━━━━━━━━━━━━
-[ 2 ] ${p2.nama} ${stokReal > 0 ? "✅" : "🚫"}
-  ╰┈➤ ᴛᴇʀꜱᴇᴅɪᴀ : ${stokReal} pcs
+[ 2 ] ${p2.nama} ${stokP2 > 0 ? "✅" : "🚫"}
+  ╰┈➤ ᴛᴇʀꜱᴇᴅɪᴀ : ${stokP2} pcs
+━━━━━━━━━━━━━
+[ 3 ] ${p3.nama} ${stokP3 > 0 ? "✅" : "🚫"}
+  ╰┈➤ ᴛᴇʀꜱᴇᴅɪᴀ : ${stokP3} pcs
 ━━━━━━━━━━━━━
 
 Pilih produk`,
-  {
-    chat_id: chatId,
-    message_id: messageId,
-    parse_mode: "Markdown",
-    reply_markup: {
-      inline_keyboard: [
-  // Nomor produk (atas)
-  [
-    { text: "1", callback_data: "produk_alightmotion" },
-    { text: "2", callback_data: "produk_panelunli" },
-    { text: "3", callback_data: "comingsoon" },
-    { text: "4", callback_data: "comingsoon" },
-    { text: "5", callback_data: "comingsoon" }
-  ],
-
-  // Selanjutnya (tengah)
-  [
-    { text: "Selanjutnya", callback_data: "next_page" }
-  ],
-
-  // Bawah kiri kanan
-  [
-    { text: "⬅ Kembali", callback_data: "back_menu" },
-    { text: "Produk Lainnya", callback_data: "comingsoon" }
-  ]
-
-]
-    }
-  });
-}
-
+    {
+      chat_id: chatId,
+      message_id: messageId,
+      parse_mode: "Markdown",
+      reply_markup: {
+        inline_keyboard: [
+          [
+            { text: "1", callback_data: "produk_alightmotion" },
+            { text: "2", callback_data: "produk_panelunli" },
+            { text: "3", callback_data: "produk_aplikasipremium" },
+            { text: "4", callback_data: "comingsoon" },
+            { text: "5", callback_data: "comingsoon" }
+          ],
+          [
+            { text: "Selanjutnya", callback_data: "next_page" }
+          ],
+          [
+            { text: "⬅ Kembali", callback_data: "back_menu" },
+            { text: "Produk Lainnya", callback_data: "comingsoon" }
+          ]
+        ]
+      }
+    });
+  }
 
   if (query.data === "comingsoon") {
-  bot.answerCallbackQuery(query.id, {
-    text: "Produk belum tersedia",
-    show_alert: true
-  });
-}
+    bot.answerCallbackQuery(query.id, {
+      text: "Produk belum tersedia",
+      show_alert: true
+    });
+  }
 
-if (query.data === "next_page") {
-  bot.answerCallbackQuery(query.id, {
-    text: "Halaman selanjutnya belum tersedia",
-    show_alert: true
-  });
-}
+  if (query.data === "next_page") {
+    bot.answerCallbackQuery(query.id, {
+      text: "Halaman selanjutnya belum tersedia",
+      show_alert: true
+    });
+  }
 
-
-  // ===== PILIH PRODUK ALIGHT MOTION =====
+  // ===== PILIH PRODUK =====
   if (query.data === "produk_alightmotion") {
-
     session[userId].produk = "alightmotion";
+    session[userId].qty = 1;
+
+    const detail = produkDetail(userId);
+
+    bot.editMessageCaption(detail.text, {
+      chat_id: chatId,
+      message_id: messageId,
+      parse_mode: "Markdown",
+      reply_markup: detail.keyboard
+    });
+  }
+
+  if (query.data === "produk_panelunli") {
+    session[userId].produk = "panelunli";
+    session[userId].qty = 1;
+
+    const detail = produkDetail(userId);
+
+    bot.editMessageCaption(detail.text, {
+      chat_id: chatId,
+      message_id: messageId,
+      parse_mode: "Markdown",
+      reply_markup: detail.keyboard
+    });
+  }
+
+  if (query.data === "produk_aplikasipremium") {
+    session[userId].produk = "aplikasipremium";
     session[userId].qty = 1;
 
     const detail = produkDetail(userId);
@@ -508,9 +593,15 @@ if (query.data === "next_page") {
 
   // ===== QTY PLUS =====
   if (query.data === "qty_plus") {
-
     const s = session[userId];
-    const stokReal = getStokAkun(); // Ambil stok dari database
+    const produk = produkList[s.produk];
+    
+    let stokReal;
+    if (produk.type === "akun" || produk.type === "panel") {
+      stokReal = getStokAkun(produk.database);
+    } else if (produk.type === "apk") {
+      stokReal = getStokApk();
+    }
 
     if (s.qty < stokReal) s.qty++;
 
@@ -526,7 +617,6 @@ if (query.data === "next_page") {
 
   // ===== QTY MINUS =====
   if (query.data === "qty_minus") {
-
     const s = session[userId];
 
     if (s.qty > 1) s.qty--;
@@ -541,43 +631,24 @@ if (query.data === "next_page") {
     }).catch(() => {});
   }
 
-  // ===== QTY NULL (No Action) =====
+  // ===== QTY NULL =====
   if (query.data === "qty_null") {
-    // Tidak ada aksi, hanya untuk menampilkan angka qty
-  }
-
-  // ===== PILIH PRODUK ALIGHT MOTION =====
-  if (query.data === "produk_panelunli") {
-
-    session[userId].produk = "panelunli";
-    session[userId].qty = 1;
-
-    const detail = produkDetail(userId);
-
-    bot.editMessageCaption(detail.text, {
-      chat_id: chatId,
-      message_id: messageId,
-      parse_mode: "Markdown",
-      reply_markup: detail.keyboard
-    });
+    // Tidak ada aksi
   }
 
   // ===== BAYAR =====
   if (query.data === "bayar") {
-
     const s = session[userId];
     const produk = produkList[s.produk];
     const harga = produk.harga * s.qty;
     const feeAdmin = 59;
     const total = harga + feeAdmin;
     
-    // Generate reference code
     const refCode = `DEP${Date.now()}${Math.floor(Math.random() * 1000)}`;
     
-    // Simpan reference ke session
     session[userId].refCode = refCode;
     session[userId].total = total;
-    session[userId].step = "waiting_confirm"; // Set step untuk menunggu konfirmasi
+    session[userId].step = "waiting_confirm";
 
     bot.sendPhoto(chatId, "./qris/qris.jpeg", {
       caption:
@@ -609,8 +680,6 @@ Jika sudah bayar tekan tombol
 
   // ===== KONFIRMASI BAYAR =====
   if (query.data === "konfirmasi_bayar") {
-    
-    // Set step ke upload untuk menerima foto
     session[userId].step = "upload";
     
     bot.sendMessage(chatId, 
@@ -651,15 +720,20 @@ Terima kasih! 🙏`,
 
   // ===== OWNER ACC =====
   if (query.data.startsWith("acc_")) {
-
     const id = query.data.split("_")[1];
     const order = pendingOrder[id];
 
-    // Ambil data akun dari database
-    const result = ambilAkunDanHapus(order.qty);
+    const produk = produkList[order.produkKey];
+    let result;
+    
+    // Ambil data berdasarkan tipe produk
+    if (produk.type === "akun" || produk.type === "panel") {
+      result = ambilAkunDanHapus(produk.database, order.qty);
+    } else if (produk.type === "apk") {
+      result = ambilApkDanKurangiQty(order.qty);
+    }
     
     if (!result.success) {
-      // Jika stok tidak cukup, beri tahu owner
       bot.sendMessage(OWNER_ID, `❌ ${result.message}\nPesanan tidak dapat diproses.`);
       bot.answerCallbackQuery(query.id, { text: result.message, show_alert: true });
       return;
@@ -667,15 +741,16 @@ Terima kasih! 🙏`,
 
     addTransaksi(order);
 
-    // Hapus pesan konfirmasi lama (pesan "Bukti diterima, menunggu...")
     if (order.confirmMsgId) {
       bot.deleteMessage(order.chatId, order.confirmMsgId).catch(() => {});
     }
 
-    // Format data akun untuk dikirim
-    let akunText = "";
-    result.data.forEach((akun, index) => {
-      akunText += `
+    let produkText = "";
+    
+    // Format output berdasarkan tipe produk
+    if (produk.type === "akun") {
+      result.data.forEach((akun, index) => {
+        produkText += `
 ━━━━━━━━━━━━━
 📱 *AKUN #${index + 1}*
 ━━━━━━━━━━━━━
@@ -685,9 +760,36 @@ Terima kasih! 🙏`,
 📝 *Cara Login:*
 ${akun.caraLogin}
 `;
-    });
+      });
+    } else if (produk.type === "panel") {
+      result.data.forEach((panel, index) => {
+        produkText += `
+━━━━━━━━━━━━━
+🌐 *PANEL #${index + 1}*
+━━━━━━━━━━━━━
+📧 Email : \`${panel.email}\`
+🔑 Password : \`${panel.password}\`
+🔗 Link Panel : ${panel.link}
+`;
+      });
+    } else if (produk.type === "apk") {
+      const apkData = result.data[0];
+      produkText = `
+━━━━━━━━━━━━━
+📥 *LINK DOWNLOAD APK*
+━━━━━━━━━━━━━
+📦 Nama : ${apkData.nama}
+🔗 Link : ${apkData.url}
+${apkData.password ? `🔐 Password : \`${apkData.password}\`` : ''}
 
-    // Kirim data produk ke buyer
+📝 *Keterangan:*
+${apkData.keterangan}
+
+💡 *Jumlah Lisensi: ${order.qty} User*
+`;
+    }
+
+    // Kirim produk ke buyer
     bot.sendMessage(order.user,
 `✅ *PEMBAYARAN DITERIMA!*
 ━━━━━━━━━━━━━
@@ -701,9 +803,9 @@ Total Bayar : Rp ${order.total.toLocaleString('id-ID')}
 Reference : ${order.refCode}
 
 ━━━━━━━━━━━━━
-📥 *DATA AKUN ANDA*
+📥 *DATA PRODUK ANDA*
 ━━━━━━━━━━━━━
-${akunText}
+${produkText}
 📌 *Informasi Penting:*
 ✅ Expired 1 Tahun
 ✅ Legal & Aman
@@ -729,6 +831,13 @@ Semoga puas dengan produk kami 🙏`,
     });
 
     // Update pesan di owner
+    let sisaStok;
+    if (produk.type === "akun" || produk.type === "panel") {
+      sisaStok = getStokAkun(produk.database);
+    } else if (produk.type === "apk") {
+      sisaStok = getStokApk();
+    }
+    
     bot.editMessageCaption(
 `✅ *PESANAN DIKONFIRMASI*
 ━━━━━━━━━━━━━
@@ -740,7 +849,7 @@ Total : Rp ${order.total.toLocaleString('id-ID')}
 
 Status : *ACC ✅*
 Waktu ACC : ${new Date().toLocaleString('id-ID')}
-Sisa Stok : ${getStokAkun()} akun`, 
+Sisa Stok : ${sisaStok} ${produk.type}`, 
     {
       chat_id: OWNER_ID,
       message_id: query.message.message_id,
@@ -752,7 +861,6 @@ Sisa Stok : ${getStokAkun()} akun`,
 
   // ===== OWNER TOLAK =====
   if (query.data.startsWith("tolak_")) {
-
     const id = query.data.split("_")[1];
     const order = pendingOrder[id];
 
@@ -796,10 +904,8 @@ Status: DITOLAK ❌`,
 
   // ===== BACK MENU =====
   if (query.data === "back_menu") {
-    // Hapus pesan sebelumnya
     bot.deleteMessage(chatId, messageId).catch(() => {});
 
-    // Kirim menu utama baru
     const menu = mainMenu(userId);
     bot.sendPhoto(
       chatId,
@@ -817,36 +923,15 @@ Status: DITOLAK ❌`,
 
 // ================= MESSAGE =================
 bot.on("message", async (msg) => {
-
   const userId = msg.from.id;
   const chatId = msg.chat.id;
 
-  // Skip jika pesan adalah command /start
   if (msg.text && msg.text.startsWith('/')) return;
 
   if (!session[userId]) return;
 
-  // ===== INPUT QTY =====
-  if (session[userId].step === "qty") {
-
-    const qty = parseInt(msg.text);
-    if (isNaN(qty)) return bot.sendMessage(chatId, "Masukkan angka!");
-
-    session[userId].qty = qty;
-    session[userId].step = null;
-
-    bot.sendMessage(chatId, "Klik bayar", {
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: "💳 Bayar Sekarang", callback_data: "bayar" }]
-        ]
-      }
-    });
-  }
-
   // ===== UPLOAD BUKTI =====
   if (session[userId].step === "upload" && msg.photo) {
-
     const s = session[userId];
     const produk = produkList[s.produk];
 
@@ -855,10 +940,11 @@ bot.on("message", async (msg) => {
     pendingOrder[orderId] = {
       user: userId,
       produk: produk.nama,
+      produkKey: s.produk,
       qty: s.qty,
       total: s.total,
       refCode: s.refCode,
-      chatId: chatId // Simpan chatId untuk delete message nanti
+      chatId: chatId
     };
 
     const photo = msg.photo[msg.photo.length - 1].file_id;
@@ -890,7 +976,7 @@ ${s.refCode}
       console.error(`❌ Gagal kirim ke owner:`, err.message);
     });
 
-    // Kirim konfirmasi ke buyer dan simpan message_id
+    // Kirim konfirmasi ke buyer
     bot.sendMessage(chatId,
 `⏳ *Bukti Pembayaran Diterima*
 
@@ -903,15 +989,11 @@ Anda akan mendapat notifikasi setelah pembayaran dikonfirmasi.
 
 ⏱️ Estimasi: 1-5 menit`, 
     { parse_mode: "Markdown" }).then((sentMsg) => {
-      // Simpan message_id untuk dihapus nanti
       pendingOrder[orderId].confirmMsgId = sentMsg.message_id;
     });
 
-    // Reset step tapi jangan hapus session (untuk data reference)
     session[userId].step = null;
   }
-
 });
-
 
 console.log("Bot Running...");
